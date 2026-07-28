@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to get current user's role
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && getUserRole() == 'admin';
+    }
+
+    // Helper function to check if user is rep
+    function isRep() {
+      return request.auth != null && getUserRole() == 'rep';
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if isAdmin(); // Admin has full access to everything
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || request.auth.uid == userId;
+    }
+
+    // Shops Collection
+    match /shops/{shopId} {
+      allow read: if isAdmin() || (isRep() && resource.data.routeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.routeId);
+      allow write: if isAdmin();
+    }
+
+    // Products Collection
+    match /products/{productId} {
+      allow read: if request.auth != null; // Everyone can read products
+      allow write: if isAdmin(); // Only admin can create/edit products (stock logic is handled via service account/backend usually, but if client-side, we need to allow rep to update stock. Since we do it client-side in flutter:)
+      allow update: if isRep() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'active']);
+    }
+
+    // Routes Collection
+    match /routes/{routeId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (isRep() && resource.data.repId == request.auth.uid) || (resource.data.shopId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopName);
+      allow create: if isRep();
+      allow update, delete: if isAdmin();
+    }
+
+    // Payments Collection
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || (isRep() && resource.data.repId == request.auth.uid);
+      allow create: if isRep();
+      allow update, delete: if isAdmin();
+    }
+
+    // Visits Collection
+    match /visits/{visitId} {
+      allow read: if isAdmin() || (isRep() && resource.data.repId == request.auth.uid);
+      allow create: if isRep();
+      allow update, delete: if isAdmin();
+    }
+  }
+}

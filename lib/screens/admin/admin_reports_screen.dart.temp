@@ -1,0 +1,284 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/product_provider.dart';
+import '../../../providers/order_provider.dart';
+import '../../../providers/route_provider.dart';
+import '../../../providers/shop_provider.dart';
+import '../../../providers/rep_provider.dart';
+import '../../../providers/payment_provider.dart';
+import '../../../models/route_model.dart';
+import '../../../models/user_model.dart';
+import '../../../models/visit_model.dart';
+import '../../../models/order_model.dart';
+import '../../../models/payment_model.dart';
+import '../../../models/shop_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/pdf_export_service.dart';
+
+class AdminReportsScreen extends StatefulWidget {
+  const AdminReportsScreen({super.key});
+
+  @override
+  State<AdminReportsScreen> createState() => _AdminReportsScreenState();
+}
+
+class _AdminReportsScreenState extends State<AdminReportsScreen> {
+  // Navigation State
+  String? _activeCategory;
+
+  // Rep Analytics Filters and State
+
+  List<VisitModel> _allVisits = [];
+  bool _visitsLoaded = false;
+
+  static const double defaultMonthlyTarget = 500000.0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProductProvider>().getAllProducts();
+      context.read<OrderProvider>().fetchAllOrders();
+      context.read<ShopProvider>().fetchAllShops();
+      context.read<RepProvider>().fetchAllReps();
+      context.read<PaymentProvider>().getAllPayments();
+      _fetchVisits();
+    });
+  }
+
+  Future<void> _fetchVisits() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('visits')
+          .get();
+      if (mounted) {
+        setState(() {
+          _allVisits = snapshot.docs
+              .map((doc) => VisitModel.fromMap(doc.data(), doc.id))
+              .toList();
+          _visitsLoaded = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching visits: $e');
+      if (mounted) {
+        setState(() => _visitsLoaded = true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: CustomScrollView(
+        slivers: [
+          _buildHeader(),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 24.0,
+            ),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                if (_activeCategory == null) _buildMainMenu(),
+                if (_activeCategory == 'Sales') _buildSalesReportsSection(),
+                if (_activeCategory == 'Routes') _buildRouteAnalyticsSection(),
+                if (_activeCategory == 'Reps') _buildRepAnalyticsSection(),
+                if (_activeCategory == 'Financial')
+                  _buildFinancialAnalyticsSection(),
+                if (_activeCategory == 'Export')
+                  _buildExportCenter(),
+                const SizedBox(height: 40), // Bottom padding
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return SliverToBoxAdapter(
+      child: Container(
+        padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top + 24,
+          left: 24,
+          right: 24,
+          bottom: 24,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+        ),
+        child: _buildHeaderTitle(),
+      ),
+    );
+  }
+
+  Widget _buildHeaderTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_activeCategory != null)
+          InkWell(
+            onTap: () => setState(() => _activeCategory = null),
+            child: const Padding(
+              padding: EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back, size: 16, color: Color(0xFFC62828)),
+                  SizedBox(width: 4),
+                  Text(
+                    'Back to Reports Menu',
+                    style: TextStyle(
+                      color: Color(0xFFC62828),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Text(
+          _activeCategory == null
+              ? 'Reports & Analytics'
+              : 'Reports / $_activeCategory',
+          style: const TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _activeCategory == null
+              ? 'Select a category to view detailed business insights and performance reports.'
+              : 'Viewing detailed $_activeCategory analytics.',
+          style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMainMenu() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isDesktop = constraints.maxWidth >= 900;
+        return GridView.count(
+          crossAxisCount: isDesktop ? 3 : (constraints.maxWidth >= 600 ? 2 : 1),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 1.8,
+          children: [
+            _buildMenuCard(
+              'Sales',
+              'Sales Reports',
+              'View total sales, orders, and shop performance.',
+              Icons.trending_up,
+              Colors.blue,
+            ),
+            _buildMenuCard(
+              'Routes',
+              'Route Analytics',
+              'Monitor performance across different regions.',
+              Icons.map,
+              Colors.orange,
+            ),
+            _buildMenuCard(
+              'Reps',
+              'Representative Analytics',
+              'Track employee targets, visits, and efficiency.',
+              Icons.people,
+              Colors.purple,
+            ),
+            _buildMenuCard(
+              'Financial',
+              'Financial Reports',
+              'Analyze revenue, expenses, and payments.',
+              Icons.payments,
+              Colors.green,
+            ),
+            _buildMenuCard(
+              'Export',
+              'Export Center',
+              'Generate PDF and Excel reports for all data.',
+              Icons.download_outlined,
+              Colors.teal,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMenuCard(
+    String category,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+  ) {
+    return InkWell(
+      onTap: () => setState(() => _activeCategory = category),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 32),
+            ),
+            const Spacer(),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  // Financial Analytics Filters
+  String _selectedFinancialPeriod = 'This Month';
+  String _selectedFinancialRoute = 'All';
+  String _selectedFinancialRep = 'All';
+}

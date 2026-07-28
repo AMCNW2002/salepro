@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "336156292373",
+    "project_id": "freelan-cd806",
+    "storage_bucket": "freelan-cd806.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:336156292373:android:1e264a2d449841b7ece51c",
+        "android_client_info": {
+          "package_name": "com.example.salepro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoTs_kiJo4UAPKay5qKm_fDuWACuFE5EM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
