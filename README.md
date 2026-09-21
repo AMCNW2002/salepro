@@ -258,17 +258,6 @@ Recommended screenshots:
 - Customer Dashboard
 - Rep Location
 
-Example:
-
-```markdown
-![Login Screen](screenshots/login.png)
-
-![Admin Dashboard](screenshots/admin_dashboard.png)
-
-![Rep Dashboard](screenshots/rep_dashboard.png)
-
-![Order Screen](screenshots/order_screen.png)
-```
 
 ---
 
@@ -319,7 +308,7 @@ Sri Lanka Institute of Advanced Technological Education (SLIATE)
 
 ### Connect With Me
 
-- GitHub: [Your GitHub Profile](https://github.com/YOUR_USERNAME)
+- GitHub: [Your GitHub Profile](https://github.com/AMCNW2002/)
 - LinkedIn: [Your LinkedIn Profile](https://www.linkedin.com/)
 
 ---
